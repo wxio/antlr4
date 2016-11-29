@@ -4,3 +4,4 @@ mvn compile
 mvn install -DskipTests
 mkdir runtime/Go/antlr/lib/
 cp tool/target/antlr4-4.6-SNAPSHOT.jar runtime/Go/antlr/lib/
+git filter-branch --prune-empty --subdirectory-filter runtime/Go/antlr master
