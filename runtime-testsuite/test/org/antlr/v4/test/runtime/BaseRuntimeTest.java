@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
 package org.antlr.v4.test.runtime;
 
 import org.antlr.v4.Tool;
@@ -49,6 +55,26 @@ public abstract class BaseRuntimeTest {
 		"Node", "Safari", "Firefox", "Explorer", "Chrome"
 	};
 
+	static {
+		// Add heartbeat thread to gen minimal output for travis, appveyor to
+		// avoid timeout.
+		Thread t = new Thread("heartbeat") {
+			@Override
+			public void run() {
+				while (true) {
+					System.out.print('.');
+					try {
+						Thread.sleep(5000);
+					}
+					catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+		t.start();
+	}
+
 	/** ANTLR isn't thread-safe to process grammars so we use a global lock for testing */
 	public static final Object antlrLock = new Object();
 
@@ -84,6 +110,7 @@ public abstract class BaseRuntimeTest {
 
 	@Test
 	public void testOne() throws Exception {
+		// System.out.println(delegate.getTmpDir());
 		if ( descriptor.ignore(descriptor.getTarget()) ) {
 			System.out.printf("Ignore "+descriptor);
 			return;
