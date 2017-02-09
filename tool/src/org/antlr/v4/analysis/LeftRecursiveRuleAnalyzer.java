@@ -8,6 +8,7 @@ package org.antlr.v4.analysis;
 
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.Token;
+import org.antlr.runtime.TokenRewriteStream;
 import org.antlr.runtime.TokenStream;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
@@ -68,7 +69,11 @@ public class LeftRecursiveRuleAnalyzer extends LeftRecursiveRuleWalker {
 		this.tool = tool;
 		this.ruleName = ruleName;
 		this.language = language;
-		this.tokenStream = ruleAST.g.tokenStream;
+		if ( ruleAST.extendedRuleTokenStream != null ) {
+			this.tokenStream = ruleAST.extendedRuleTokenStream;			
+		} else {
+			this.tokenStream = ruleAST.g.tokenStream;
+		}
 		if (this.tokenStream == null) {
 			throw new NullPointerException("grammar must have a token stream");
 		}
@@ -233,9 +238,10 @@ public class LeftRecursiveRuleAnalyzer extends LeftRecursiveRuleWalker {
 
 		ruleST.add("primaryAlts", prefixAndOtherAlts);
 
-		tool.log("left-recursion", ruleST.render());
+		String ruleST_render = ruleST.render();
+		tool.log("left-recursion", ruleST_render);
 
-		return ruleST.render();
+		return ruleST_render;
 	}
 
 	public AltAST addPrecedenceArgToRules(AltAST t, int prec) {

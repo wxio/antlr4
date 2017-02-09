@@ -103,4 +103,11 @@ public class ANTLRMessage {
 			   ", charPosition=" + charPosition +
 			   '}';
 	}
+	
+	public void printMsg() {
+		System.err.printf("%s [%d:%d] - %s - %s\n", fileName, line, charPosition, getErrorType(), getCause());
+		for( Object a : getArgs() ) {
+			System.err.println(a);	
+		}
+	}
 }
