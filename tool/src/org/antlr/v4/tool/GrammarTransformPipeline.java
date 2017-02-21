@@ -297,7 +297,10 @@ public class GrammarTransformPipeline {
 						GrammarAST extendFromBlock = extendFrom.getAllChildrenWithType(ANTLRParser.BLOCK).get(0);
 						GrammarAST importBlock = r.getAllChildrenWithType(ANTLRParser.BLOCK).get(0);
 						
+						// Create a new token stream that is the merger of import and extending
+						// need for LeftRecursiveRuleTransformer
 						int s = r.getTokenStartIndex() ;
+						// copy tokens from beginning of rule to end of imported block
 						r.extendedRuleTokenStream = new ExtendedRuleTokenStream( s );  
 						for( int i = s; i <= importBlock.getTokenStopIndex(); i ++) {
 							r.extendedRuleTokenStream.add( r.g.tokenStream.get(i) );
@@ -316,8 +319,6 @@ public class GrammarTransformPipeline {
 							RuleExtends ruleExtend = new RuleExtends((RuleAST)extendFrom, name);
 							tool.RuleExtend2Rule.put(eName, ruleExtend);
 
-							//TODO(garym) look in inserting extend alt tokens into importBlock
-							//TODO(garym) change start and stop token indexes
 							int importBlockStopIndex = importBlock.getTokenStopIndex();
 
 							int extendAFromStartIndex = extendA.getTokenStartIndex();							
@@ -327,12 +328,14 @@ public class GrammarTransformPipeline {
 							int i = extendAFromStartIndex;
 							newEA.setTokenStartIndex(importBlockStopIndex + j);
 
+							// Add an OR token, but don't set it's text as '|' pitches up twice
 							Token tnl = new CommonToken(ANTLRLexer.OR);
 							tnl.setText(""); // don't set the text as it would get doubled up 
 							tnl.setTokenIndex(importBlockStopIndex + j);
 							j++;
 							r.extendedRuleTokenStream.add( tnl ); addedTokens++;							
-							
+
+							// Add tokes from extending alt
 							while ( i<=extendAFromStopIndex ) {
 								Token token = extendFrom.g.tokenStream.get(i);
 								token.setTokenIndex( importBlockStopIndex + j );
@@ -342,13 +345,10 @@ public class GrammarTransformPipeline {
 							
 							newEA.setTokenStopIndex(importBlockStopIndex + j);
 							
-							importBlock.addChild(newEA);
-							
-							for ( GrammarAST x : importBlock.getChildrenAsArray() ) {
-								System.out.println( x.getTokenStartIndex() );
-							}
+							importBlock.addChild(newEA);							
 						}
 						
+						// Add tokens from end of imported block to end of rule - should just be ';'
 						Token t = null;
 						for ( int i = importBlock.getTokenStopIndex()+1 ; i <= r.getTokenStopIndex(); i++  ) {
 							t = r.g.tokenStream.get(i);
@@ -357,9 +357,11 @@ public class GrammarTransformPipeline {
 						}
 						r.setTokenStopIndex(t.getTokenIndex());
 						
+						rootGrammar.tool.logMgr.log("grammar-inheritance", "Manufacted new token stream to represent combined rule. Needed for LeftRecursiveRule Analyzer & Transform. rule:" + name );
+						rootGrammar.tool.logMgr.log("grammar-inheritance", "Tokens");
 						for ( int i = r.getTokenStartIndex() ; i <= r.getTokenStopIndex(); i++  ) {
 							t = r.extendedRuleTokenStream.get(i);
-							System.out.println(t);
+							rootGrammar.tool.logMgr.log("grammar-inheritance", t + "");
 						}
 						
 						

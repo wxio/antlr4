@@ -238,9 +238,10 @@ public class LeftRecursiveRuleAnalyzer extends LeftRecursiveRuleWalker {
 
 		ruleST.add("primaryAlts", prefixAndOtherAlts);
 
-		tool.log("left-recursion", ruleST.render());
+		String ruleST_render = ruleST.render();
+		tool.log("left-recursion", ruleST_render);
 
-		return ruleST.render();
+		return ruleST_render;
 	}
 
 	public AltAST addPrecedenceArgToRules(AltAST t, int prec) {
