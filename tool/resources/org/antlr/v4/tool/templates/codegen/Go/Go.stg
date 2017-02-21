@@ -1236,14 +1236,14 @@ Set<a.name; format="cap">([]<TokenLabelType()>)
 
     //ruleContextDecls
 	<struct.ruleContextDecls:{a | 
-Get<a.name; format="cap">() I<a.ctxName>
-Set<a.name; format="cap">(I<a.ctxName>)
+Get<a.name; format="cap">() <a.prefix>I<a.ctxName>
+Set<a.name; format="cap">(<a.prefix>I<a.ctxName>)
 }; separator="\n">
 
     //ruleContextListDecls
 	<struct.ruleContextListDecls:{a | 
-Get<a.name; format="cap">() []I<a.ctxName>
-Set<a.name; format="cap">([]I<a.ctxName>) 
+Get<a.name; format="cap">() []<a.prefix>I<a.ctxName>
+Set<a.name; format="cap">([]<a.prefix>I<a.ctxName>) 
 }; separator="\n">
 
     //attributeDecls
@@ -1253,11 +1253,11 @@ Set<a.name; format="cap">(<a.type>)}
 ; separator="\n">
 
     //ruleGetterDecl
-<struct.ruleGetterDecl:{r            |    <r.name; format="cap">() I<r.ctxName>  }; separator="\n">
+<struct.ruleGetterDecl:{r            |    <r.name; format="cap">() <r.prefix>I<r.ctxName>  }; separator="\n">
     //ruleListGetterDecl
-<struct.ruleListGetterDecl:{r        |    All<r.name; format="cap">() []I<r.ctxName> }; separator="\n">
+<struct.ruleListGetterDecl:{r        |    All<r.name; format="cap">() []<r.prefix>I<r.ctxName> }; separator="\n">
     //ruleListIndexedGetterDecl
-<struct.ruleListIndexedGetterDecl:{r |    <r.name; format="cap">(i int) I<r.ctxName> }; separator="\n">
+<struct.ruleListIndexedGetterDecl:{r |    <r.name; format="cap">(i int) <r.prefix>I<r.ctxName> }; separator="\n">
 
     //tokenGetterDecl
 <struct.tokenGetterDecl:{t            |    <t.name; format="cap">() antlr.TerminalNode}; separator="\n">
