@@ -12,6 +12,7 @@ import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
+import org.antlr.v4.analysis.ExtendedRuleTokenStream;
 import org.antlr.v4.parse.ANTLRParser;
 import org.antlr.v4.parse.GrammarASTAdaptor;
 import org.antlr.v4.runtime.atn.ATNState;
@@ -28,6 +29,8 @@ public class GrammarAST extends CommonTree {
 	// TODO: try to remove -- please don't removed - using it for distinguishing imported for root grammars 
 	public Grammar g;
 
+	public ExtendedRuleTokenStream extendedRuleTokenStream;
+	
 	/** If we build an ATN, we make AST node point at left edge of ATN construct */
 	public ATNState atnState;
 

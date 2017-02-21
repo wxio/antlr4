@@ -8,15 +8,15 @@ package org.antlr.v4.test.runtime.go;
 
 import org.antlr.v4.test.runtime.BaseRuntimeTest;
 import org.antlr.v4.test.runtime.RuntimeTestDescriptor;
-import org.antlr.v4.test.runtime.descriptors.ListenersDescriptors;
+import org.antlr.v4.test.runtime.descriptors.ExtendingGrammarDescriptors;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
-public class TestGoSpecific extends BaseRuntimeTest {
-	public TestGoSpecific(RuntimeTestDescriptor descriptor) {
+public class TestExtendingGrammars extends BaseRuntimeTest {
+	public TestExtendingGrammars(RuntimeTestDescriptor descriptor) {
 		super(descriptor,new BaseGoTest());
 	}
 
@@ -28,6 +28,6 @@ public class TestGoSpecific extends BaseRuntimeTest {
 
 	@Parameterized.Parameters(name="{0}")
 	public static RuntimeTestDescriptor[] getAllTestDescriptors() {
-		return BaseRuntimeTest.getRuntimeTestDescriptors(GoSpecificDescriptors.class, "Go");
+		return BaseRuntimeTest.getRuntimeTestDescriptors(ExtendingGrammarDescriptors.class, "Go");
 	}
 }

@@ -7,6 +7,9 @@
 package org.antlr.v4.tool;
 
 import org.antlr.runtime.CommonToken;
+import org.antlr.runtime.CommonTokenStream;
+import org.antlr.runtime.Token;
+import org.antlr.runtime.TokenRewriteStream;
 import org.antlr.runtime.tree.CommonTree;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
@@ -14,11 +17,14 @@ import org.antlr.runtime.tree.TreeVisitor;
 import org.antlr.runtime.tree.TreeVisitorAction;
 import org.antlr.v4.Tool;
 import org.antlr.v4.Tool.RuleExtends;
+import org.antlr.v4.analysis.ExtendedRuleTokenStream;
 import org.antlr.v4.analysis.LeftRecursiveRuleTransformer;
+import org.antlr.v4.parse.ANTLRLexer;
 import org.antlr.v4.parse.ANTLRParser;
 import org.antlr.v4.parse.BlockSetTransformer;
 import org.antlr.v4.parse.GrammarASTAdaptor;
 import org.antlr.v4.parse.GrammarToken;
+import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.antlr.v4.runtime.misc.DoubleKeyMap;
 import org.antlr.v4.runtime.misc.Pair;
 import org.antlr.v4.tool.ast.AltAST;
@@ -171,6 +177,7 @@ public class GrammarTransformPipeline {
 		GrammarAST RULES = (GrammarAST)root.getFirstChildWithType(ANTLRParser.RULES);
 		Set<String> rootRuleNames = new HashSet<String>();
 		
+		//TODO(garym) this needs to change to a multimap to handle multi extensions points
 		Map<String,GrammarAST> extendRules = new HashMap<String, GrammarAST>();
 		
 		// make list of rules we have in root grammar
@@ -183,6 +190,9 @@ public class GrammarTransformPipeline {
 				for( GrammarAST op : ops ) {
 					if( "extends".equals(op.getChild(0).getText()) ) {
 						rootGrammar.tool.logMgr.log("grammar-inheritance", "Rule options in root grammar '" + r.getChild(0).getText() + "' extends '" + op.getChild(1).getText() + "'");
+						if ( extendRules.get(op.getChild(1).getText()) != null ) {
+							rootGrammar.tool.errMgr.grammarError(ErrorType.ILLEGAL_OPTION, r.g.fileName, r.getToken(), "multiple extension points not supported" );
+						}
 						extendRules.put(op.getChild(1).getText(), r);
 						((RuleAST)r).isExtention = true;
 						//TODO(garym) check the rule exists in imported grammar.
@@ -275,7 +285,7 @@ public class GrammarTransformPipeline {
 					
 					rootGrammar.tool.log("grammar", "imported rule: "+r.toStringTree());
 					String name = r.getChild(0).getText();
-										
+								
 					GrammarAST extendFrom = extendRules.get(name);
 					// Inject alternatives into imported rule 
 					
@@ -286,6 +296,15 @@ public class GrammarTransformPipeline {
 					if( extendFrom != null ) {
 						GrammarAST extendFromBlock = extendFrom.getAllChildrenWithType(ANTLRParser.BLOCK).get(0);
 						GrammarAST importBlock = r.getAllChildrenWithType(ANTLRParser.BLOCK).get(0);
+						
+						int s = r.getTokenStartIndex() ;
+						r.extendedRuleTokenStream = new ExtendedRuleTokenStream( s );  
+						for( int i = s; i <= importBlock.getTokenStopIndex(); i ++) {
+							r.extendedRuleTokenStream.add( r.g.tokenStream.get(i) );
+						}
+
+						
+						int addedTokens = 0;
 						for( GrammarAST extendA : extendFromBlock.getAllChildrenWithType(ANTLRParser.ALT)) {
 							extendA.g = importBlock.g;
 							AltAST oldEA = (AltAST)extendA;
@@ -296,8 +315,54 @@ public class GrammarTransformPipeline {
 							String eName = extendFrom.getChild(0).getText();
 							RuleExtends ruleExtend = new RuleExtends((RuleAST)extendFrom, name);
 							tool.RuleExtend2Rule.put(eName, ruleExtend);
+
+							//TODO(garym) look in inserting extend alt tokens into importBlock
+							//TODO(garym) change start and stop token indexes
+							int importBlockStopIndex = importBlock.getTokenStopIndex();
+
+							int extendAFromStartIndex = extendA.getTokenStartIndex();							
+							int extendAFromStopIndex = extendA.getTokenStopIndex();							
+							
+							int j = 1;
+							int i = extendAFromStartIndex;
+							newEA.setTokenStartIndex(importBlockStopIndex + j);
+
+							Token tnl = new CommonToken(ANTLRLexer.OR);
+							tnl.setText(""); // don't set the text as it would get doubled up 
+							tnl.setTokenIndex(importBlockStopIndex + j);
+							j++;
+							r.extendedRuleTokenStream.add( tnl ); addedTokens++;							
+							
+							while ( i<=extendAFromStopIndex ) {
+								Token token = extendFrom.g.tokenStream.get(i);
+								token.setTokenIndex( importBlockStopIndex + j );
+								r.extendedRuleTokenStream.add( token ); addedTokens++;
+								i++; j++;
+							}
+							
+							newEA.setTokenStopIndex(importBlockStopIndex + j);
+							
 							importBlock.addChild(newEA);
+							
+							for ( GrammarAST x : importBlock.getChildrenAsArray() ) {
+								System.out.println( x.getTokenStartIndex() );
+							}
 						}
+						
+						Token t = null;
+						for ( int i = importBlock.getTokenStopIndex()+1 ; i <= r.getTokenStopIndex(); i++  ) {
+							t = r.g.tokenStream.get(i);
+							t.setTokenIndex(i+addedTokens);
+							r.extendedRuleTokenStream.add( t );						
+						}
+						r.setTokenStopIndex(t.getTokenIndex());
+						
+						for ( int i = r.getTokenStartIndex() ; i <= r.getTokenStopIndex(); i++  ) {
+							t = r.extendedRuleTokenStream.get(i);
+							System.out.println(t);
+						}
+						
+						
 					}
 					
 					boolean rootAlreadyHasRule = rootRuleNames.contains(name);
