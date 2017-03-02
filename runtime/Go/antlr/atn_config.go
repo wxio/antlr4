@@ -4,10 +4,7 @@
 
 package antlr
 
-import (
-	"fmt"
-	"strconv"
-)
+import "fmt"
 
 type Comparable interface {
 	equals(other interface{}) bool
@@ -19,8 +16,10 @@ type Comparable interface {
 // state. The semantic context is the tree of semantic predicates encountered
 // before reaching an ATN state.
 type ATNConfig interface {
-	Hasher
+	// Hasher
 	Comparable
+
+	HashcodeUpdate(*Hashcode)
 
 	GetState() ATNState
 	GetAlt() int
@@ -37,7 +36,7 @@ type ATNConfig interface {
 	getPrecedenceFilterSuppressed() bool
 	setPrecedenceFilterSuppressed(bool)
 
-	shortHash() string
+	shortHash() int
 }
 
 type BaseATNConfig struct {
@@ -168,20 +167,37 @@ func (b *BaseATNConfig) equals(o interface{}) bool {
 	return nums && alts && cons && sups && equal
 }
 
-func (b *BaseATNConfig) shortHash() string {
-	return strconv.Itoa(b.state.GetStateNumber()) + "/" + strconv.Itoa(b.alt) + "/" + b.semanticContext.String()
+func (b *BaseATNConfig) shortHash() int {
+	h := initHash(11)
+	h = update(h, b.state.GetStateNumber())
+	h = update(h, b.alt)
+	h = update(h, b.semanticContext.HashCode())
+	h = finish(13, 3)
+	return h
 }
 
-func (b *BaseATNConfig) Hash() string {
-	var c string
+// func (b *BaseATNConfig) Hash() string {
+// 	var c string
 
-	if b.context == nil {
-		c = ""
-	} else {
-		c = b.context.Hash()
+// 	if b.context == nil {
+// 		c = ""
+// 	} else {
+// 		c = b.context.Hash()
+// 	}
+
+// 	return strconv.Itoa(b.state.GetStateNumber()) + "/" + strconv.Itoa(b.alt) + "/" + c + "/" + b.semanticContext.String()
+// }
+
+func (b *BaseATNConfig) HashcodeUpdate(h *Hashcode) {
+	if b.context != nil {
+		b.context.HashcodeUpdate(h)
 	}
-
-	return strconv.Itoa(b.state.GetStateNumber()) + "/" + strconv.Itoa(b.alt) + "/" + c + "/" + b.semanticContext.String()
+	if b.semanticContext != SemanticContextNone {
+		b.semanticContext.HashcodeUpdate(h)
+	}
+	if b.reachesIntoOuterContext > 0 {
+		h.Update(b.reachesIntoOuterContext)
+	}
 }
 
 func (b *BaseATNConfig) String() string {
@@ -247,21 +263,40 @@ func NewLexerATNConfig1(state ATNState, alt int, context PredictionContext) *Lex
 	return &LexerATNConfig{BaseATNConfig: NewBaseATNConfig5(state, alt, context, SemanticContextNone)}
 }
 
-// func (l *LexerATNConfig) Hash() string {
-// 	var f string
-//
-// 	if l.passedThroughNonGreedyDecision {
-// 		f = "1"
-// 	} else {
-// 		f = "0"
-// 	}
-//
-// 	return fmt.Sprintf("%v%v%v%v%v%v", l.state.GetStateNumber(), l.alt, l.context, l.semanticContext, f, l.lexerActionExecutor)
-// }
+func (l *LexerATNConfig) HashcodeUpdate(h *Hashcode) {
+	if l.passedThroughNonGreedyDecision {
+		h.Update(1)
+	} else {
+		h.Update(0)
+	}
+	l.state.HashcodeUpdate(h)
+	h.Update(l.alt)
+	l.context.HashcodeUpdate(h)
+	l.semanticContext.HashcodeUpdate(h)
+	if l.lexerActionExecutor != nil {
+		h.Update(l.lexerActionExecutor.cachedHash)
+	}
+}
+
+func (l *LexerATNConfig) HashCode() int {
+	h := NewHashcode(0)
+	if l.passedThroughNonGreedyDecision {
+		h.Update(1)
+	} else {
+		h.Update(0)
+	}
+	l.state.HashcodeUpdate(h)
+	h.Update(l.alt)
+	l.context.HashcodeUpdate(h)
+	l.semanticContext.HashcodeUpdate(h)
+	if l.lexerActionExecutor != nil {
+		h.Update(l.lexerActionExecutor.HashCode())
+	}
+	return h.Finish()
+}
 
 func (l *LexerATNConfig) equals(other interface{}) bool {
 	var othert, ok = other.(*LexerATNConfig)
-
 	if l == other {
 		return true
 	} else if !ok {
@@ -269,42 +304,19 @@ func (l *LexerATNConfig) equals(other interface{}) bool {
 	} else if l.passedThroughNonGreedyDecision != othert.passedThroughNonGreedyDecision {
 		return false
 	}
-
 	var b bool
-
 	if l.lexerActionExecutor != nil {
 		b = !l.lexerActionExecutor.equals(othert.lexerActionExecutor)
 	} else {
 		b = othert.lexerActionExecutor != nil
 	}
-
 	if b {
 		return false
 	}
-
 	return l.BaseATNConfig.equals(othert.BaseATNConfig)
-}
-
-func (l *LexerATNConfig) HashCode() int {
-	var f int
-	if l.passedThroughNonGreedyDecision {
-		f = 1
-	} else {
-		f = 0
-	}
-	h := initHash(7)
-	h = update(h, l.state.HashCode())
-	h = update(h, l.alt)
-	h = update(h, l.context.HashCode())
-	h = update(h, l.semanticContext.HashCode())
-	h = update(h, f)
-	h = update(h, l.lexerActionExecutor.HashCode())
-	h = finish(h, 6)
-	return h
 }
 
 func checkNonGreedyDecision(source *LexerATNConfig, target ATNState) bool {
 	var ds, ok = target.(DecisionState)
-
 	return source.passedThroughNonGreedyDecision || (ok && ds.getNonGreedy())
 }

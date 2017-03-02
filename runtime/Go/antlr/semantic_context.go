@@ -23,6 +23,7 @@ type SemanticContext interface {
 	evaluate(parser Recognizer, outerContext RuleContext) bool
 	evalPrecedence(parser Recognizer, outerContext RuleContext) SemanticContext
 
+	HashcodeUpdate(*Hashcode)
 	HashCode() int
 	String() string
 }
@@ -115,6 +116,12 @@ func (p *Predicate) HashCode() int {
 	return p.ruleIndex*43 + p.predIndex*47
 }
 
+func (p *Predicate) HashcodeUpdate(h *Hashcode) {
+	h.Update(p.ruleIndex)
+	h.Update(p.predIndex)
+}
+
+//TODO(garym) remove
 func (p *Predicate) String() string {
 	return "{" + strconv.Itoa(p.ruleIndex) + ":" + strconv.Itoa(p.predIndex) + "}?"
 }
@@ -161,10 +168,16 @@ func (p *PrecedencePredicate) equals(other interface{}) bool {
 	}
 }
 
+//TODO(garym) remove
 func (p *PrecedencePredicate) HashCode() int {
 	return p.precedence * 51
 }
 
+func (p *PrecedencePredicate) HashcodeUpdate(h *Hashcode) {
+	h.Update(p.precedence)
+}
+
+//TODO(garym) remove
 func (p *PrecedencePredicate) String() string {
 	return "{" + strconv.Itoa(p.precedence) + ">=prec}?"
 }
@@ -320,6 +333,21 @@ func (a *OR) HashCode() int {
 	return v
 }
 
+func (a *AND) HashcodeUpdate(h *Hashcode) {
+	h.Update(1) // differentiate and from or
+	for _, o := range a.opnds {
+		o.HashcodeUpdate(h)
+	}
+}
+
+func (a *OR) HashcodeUpdate(h *Hashcode) {
+	h.Update(2) // differentiate and from or
+	for _, o := range a.opnds {
+		o.HashcodeUpdate(h)
+	}
+}
+
+//TODO(garym) remove
 func (a *AND) String() string {
 	s := ""
 
@@ -455,6 +483,7 @@ func (o *OR) evalPrecedence(parser Recognizer, outerContext RuleContext) Semanti
 	return result
 }
 
+//TODO(garym) remove
 func (o *OR) String() string {
 	s := ""
 

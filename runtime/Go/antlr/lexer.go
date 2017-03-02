@@ -164,13 +164,13 @@ func (b *BaseLexer) setTokenFactory(f TokenFactory) {
 
 func (b *BaseLexer) safeMatch() (ret int) {
 	defer func() {
-		if e := recover(); e != nil {
-			if re, ok := e.(RecognitionException); ok {
-				b.notifyListeners(re) // Report error
-				b.Recover(re)
-				ret = LexerSkip // default
-			}
-		}
+		// if e := recover(); e != nil {
+		// 	if re, ok := e.(RecognitionException); ok {
+		// 		b.notifyListeners(re) // Report error
+		// 		b.Recover(re)
+		// 		ret = LexerSkip // default
+		// 	}
+		// }
 	}()
 
 	return b.Interpreter.Match(b.input, b.mode)

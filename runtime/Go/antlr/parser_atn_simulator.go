@@ -25,7 +25,7 @@ type ParserATNSimulator struct {
 	input          TokenStream
 	startIndex     int
 	dfa            *DFA
-	mergeCache     *DoubleDict
+	mergeCache     *DoubleDictInt
 	outerContext   ParserRuleContext
 }
 
@@ -489,7 +489,7 @@ func (p *ParserATNSimulator) computeReachSet(closure ATNConfigSet, t int, fullCt
 		fmt.Println("in computeReachSet, starting closure: " + closure.String())
 	}
 	if p.mergeCache == nil {
-		p.mergeCache = NewDoubleDict()
+		p.mergeCache = NewDoubleDictInt()
 	}
 	intermediate := NewBaseATNConfigSet(fullCtx)
 
@@ -1420,7 +1420,7 @@ func (p *ParserATNSimulator) addDFAState(dfa *DFA, D *DFAState) *DFAState {
 	if D == ATNSimulatorError {
 		return D
 	}
-	hash := D.Hash()
+	hash := D.Hashcode()
 	var existing, ok = dfa.GetStates()[hash]
 	if ok {
 		return existing

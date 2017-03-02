@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	LexerATNSimulatorDebug = false
+	LexerATNSimulatorDebug    = false
 	LexerATNSimulatorDFADebug = false
 
 	LexerATNSimulatorMinDFAEdge = 0
@@ -582,7 +582,7 @@ func (l *LexerATNSimulator) addDFAState(configs ATNConfigSet) *DFAState {
 		proposed.lexerActionExecutor = firstConfigWithRuleStopState.(*LexerATNConfig).lexerActionExecutor
 		proposed.setPrediction(l.atn.ruleToTokenType[firstConfigWithRuleStopState.GetState().GetRuleIndex()])
 	}
-	hash := proposed.Hash()
+	hash := proposed.Hashcode()
 	dfa := l.decisionToDFA[l.mode]
 	existing := dfa.GetStates()[hash]
 	if existing != nil {

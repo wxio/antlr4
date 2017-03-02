@@ -7,9 +7,11 @@ package antlr
 import "fmt"
 
 type ATNConfigSet interface {
-	Hasher
+	// Hasher
 
-	Add(ATNConfig, *DoubleDict) bool
+	HashcodeUpdate(*Hashcode)
+
+	Add(ATNConfig, *DoubleDictInt) bool
 	AddAll([]ATNConfig) bool
 
 	GetStates() *Set
@@ -49,7 +51,7 @@ type ATNConfigSet interface {
 // about its elements and can combine similar configurations using a
 // graph-structured stack.
 type BaseATNConfigSet struct {
-	cachedHashString string
+	cachedHashcode *Hashcode
 
 	// configLookup is used to determine whether two BaseATNConfigSets are equal. We
 	// need all configurations with the same (s, i, _, semctx) to be equal. A key
@@ -94,9 +96,9 @@ type BaseATNConfigSet struct {
 
 func NewBaseATNConfigSet(fullCtx bool) *BaseATNConfigSet {
 	return &BaseATNConfigSet{
-		cachedHashString: "-1",
-		configLookup:     NewSet(hashATNConfig, nil, equalATNConfigs),
-		fullCtx:          fullCtx,
+		// cachedHashString: "-1",
+		configLookup: NewSet(nil, hashATNConfig, equalATNConfigs),
+		fullCtx:      fullCtx,
 	}
 }
 
@@ -104,7 +106,7 @@ func NewBaseATNConfigSet(fullCtx bool) *BaseATNConfigSet {
 // ATNConfig.state, i is the ATNConfig.alt, and pi is the
 // ATNConfig.semanticContext. We use (s,i,pi) as the key. Updates
 // dipsIntoOuterContext and hasSemanticContext when necessary.
-func (b *BaseATNConfigSet) Add(config ATNConfig, mergeCache *DoubleDict) bool {
+func (b *BaseATNConfigSet) Add(config ATNConfig, mergeCache *DoubleDictInt) bool {
 	if b.readOnly {
 		panic("set is read-only")
 	}
@@ -120,7 +122,7 @@ func (b *BaseATNConfigSet) Add(config ATNConfig, mergeCache *DoubleDict) bool {
 	existing := b.configLookup.add(config).(ATNConfig)
 
 	if existing == config {
-		b.cachedHashString = "-1"
+		b.cachedHashcode = nil
 		b.configs = append(b.configs, config) // Track order here
 
 		return true
@@ -224,26 +226,22 @@ func (b *BaseATNConfigSet) Equals(other interface{}) bool {
 		b.dipsIntoOuterContext == other2.dipsIntoOuterContext
 }
 
-func (b *BaseATNConfigSet) Hash() string {
+func (b *BaseATNConfigSet) HashCode() int {
 	if b.readOnly {
-		if b.cachedHashString == "-1" {
-			b.cachedHashString = b.hashConfigs()
+		if b.cachedHashcode == nil {
+			b.cachedHashcode = b.hashConfigs()
 		}
-
-		return b.cachedHashString
+		return b.cachedHashcode.Finish()
 	}
-
-	return b.hashConfigs()
+	return b.hashConfigs().Finish()
 }
 
-func (b *BaseATNConfigSet) hashConfigs() string {
-	s := ""
-
+func (b *BaseATNConfigSet) hashConfigs() *Hashcode {
+	h := NewHashcode(0)
 	for _, c := range b.configs {
-		s += fmt.Sprint(c)
+		c.HashcodeUpdate(h)
 	}
-
-	return s
+	return h
 }
 
 func (b *BaseATNConfigSet) Length() int {
@@ -276,8 +274,8 @@ func (b *BaseATNConfigSet) Clear() {
 	}
 
 	b.configs = make([]ATNConfig, 0)
-	b.cachedHashString = "-1"
-	b.configLookup = NewSet(hashATNConfig, nil, equalATNConfigs)
+	b.cachedHashcode = nil
+	b.configLookup = NewSet(nil, hashATNConfig, equalATNConfigs)
 }
 
 func (b *BaseATNConfigSet) FullContext() bool {
@@ -317,6 +315,28 @@ func (b *BaseATNConfigSet) SetReadOnly(readOnly bool) {
 
 	if readOnly {
 		b.configLookup = nil // Read only, so no need for the lookup cache
+	}
+}
+
+func (b *BaseATNConfigSet) HashcodeUpdate(h *Hashcode) {
+	for _, c := range b.configs {
+		c.HashcodeUpdate(h)
+	}
+	if b.hasSemanticContext {
+		h.Update(1)
+	} else {
+		h.Update(0)
+	}
+	if b.uniqueAlt != ATNInvalidAltNumber {
+		h.Update(b.uniqueAlt)
+	}
+	if b.conflictingAlts != nil {
+		b.conflictingAlts.HashcodeUpdate(h)
+	}
+	if b.dipsIntoOuterContext {
+		h.Update(1)
+	} else {
+		h.Update(0)
 	}
 }
 
@@ -364,7 +384,7 @@ func NewOrderedATNConfigSet() *OrderedATNConfigSet {
 	return &OrderedATNConfigSet{BaseATNConfigSet: b}
 }
 
-func hashATNConfig(c interface{}) string {
+func hashATNConfig(c interface{}) int {
 	return c.(ATNConfig).shortHash()
 }
 

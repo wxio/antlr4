@@ -232,6 +232,17 @@ func (b *BitSet) contains(value int) bool {
 	return b.data[value]
 }
 
+func (b *BitSet) keys() []int {
+	ks := make([]int, len(b.data))
+	i := 0
+	for k := range b.data {
+		ks[i] = k
+		i++
+	}
+	sort.Ints(ks)
+	return ks
+}
+
 func (b *BitSet) values() []int {
 	ks := make([]int, len(b.data))
 	i := 0
@@ -278,6 +289,18 @@ func (b *BitSet) length() int {
 	return len(b.data)
 }
 
+func (b *BitSet) HashcodeUpdate(h *Hashcode) {
+	keys := b.keys()
+	for _, k := range keys {
+		h.Update(k)
+		if b.data[k] {
+			h.Update(1)
+		} else {
+			h.Update(0)
+		}
+	}
+}
+
 func (b *BitSet) String() string {
 	vals := b.values()
 	valsS := make([]string, len(vals))
@@ -316,6 +339,33 @@ func (a *AltDict) values() []interface{} {
 		i++
 	}
 	return vs
+}
+
+type DoubleDictInt struct {
+	data map[int]map[int]interface{}
+}
+
+func NewDoubleDictInt() *DoubleDictInt {
+	dd := new(DoubleDictInt)
+	dd.data = make(map[int]map[int]interface{})
+	return dd
+}
+
+func (d *DoubleDictInt) Get(a int, b int) interface{} {
+	data := d.data[a]
+	if data == nil {
+		return nil
+	}
+	return data[b]
+}
+
+func (d *DoubleDictInt) set(a, b int, o interface{}) {
+	data := d.data[a]
+	if data == nil {
+		data = make(map[int]interface{})
+		d.data[a] = data
+	}
+	data[b] = o
 }
 
 type DoubleDict struct {
@@ -399,6 +449,24 @@ func TitleCase(str string) string {
 	//		return strings.ToUpper(s[0:1]) + s[1:2]
 	//	})
 
+}
+
+type Hashcode struct {
+	h     int
+	count int
+}
+
+func NewHashcode(init int) *Hashcode {
+	return &Hashcode{init, 0}
+}
+
+func (h *Hashcode) Update(k1 int) {
+	h.h = update(h.h, k1)
+	h.count++
+}
+
+func (h *Hashcode) Finish() int {
+	return finish(h.h, h.count)
 }
 
 // murmur hash

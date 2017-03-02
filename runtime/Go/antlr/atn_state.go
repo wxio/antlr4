@@ -50,6 +50,7 @@ type ATNState interface {
 
 	String() string
 	HashCode() int
+	HashcodeUpdate(*Hashcode)
 }
 
 type BaseATNState struct {
@@ -121,6 +122,10 @@ func (as *BaseATNState) GetNextTokenWithinRule() *IntervalSet {
 
 func (as *BaseATNState) SetNextTokenWithinRule(v *IntervalSet) {
 	as.NextTokenWithinRule = v
+}
+
+func (as *BaseATNState) HashcodeUpdate(h *Hashcode) {
+	h.Update(as.stateNumber)
 }
 
 func (as *BaseATNState) HashCode() int {
