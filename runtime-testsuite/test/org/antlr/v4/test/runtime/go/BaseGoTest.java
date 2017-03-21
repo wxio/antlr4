@@ -164,6 +164,9 @@ public class BaseGoTest implements RuntimeTestSupport {
 	}
 
 	private static void copyFile(File source, File dest) throws IOException {
+		if( source.isDirectory() ) {
+			return;
+		}
 		InputStream is = new FileInputStream(source);
 		OutputStream os = new FileOutputStream(dest);
 		byte[] buf = new byte[4 << 10];
@@ -337,6 +340,9 @@ public class BaseGoTest implements RuntimeTestSupport {
 	{
 		boolean success = rawGenerateAndBuildRecognizer(grammarFileName,
 		                                                grammarStr, parserName, lexerName, "-visitor");
+		if( !success ) {
+			System.out.printf("grammarFileName %s str %s parserName %s\n", grammarFileName, grammarStr, parserName);
+		}
 		assertTrue(success);
 		writeFile(overall_tmpdir.toString(), "input", input);
 		rawBuildRecognizerTestFile(parserName, lexerName, listenerName,
@@ -359,6 +365,9 @@ public class BaseGoTest implements RuntimeTestSupport {
 		ErrorQueue equeue = antlrOnString(getTmpDir(), "Go", grammarFileName, grammarStr,
 		                                  defaultListener, extraOptions);
 		if (!equeue.errors.isEmpty()) {
+			for( ANTLRMessage m : equeue.errors ) {		
+				m.printMsg();
+			}
 			return false;
 		}
 		return true;

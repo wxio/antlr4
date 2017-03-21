@@ -98,6 +98,11 @@ public class LeftRecursiveRuleTransformer {
 		//tool.log("grammar", ruleAST.toStringTree());
 		GrammarAST prevRuleAST = r.ast;
 		String ruleName = prevRuleAST.getChild(0).getText();
+		
+		
+		//
+		// TODO(garym) the newRuleText needs to get text from the extending rule
+		//
 		LeftRecursiveRuleAnalyzer leftRecursiveRuleWalker =
 			new LeftRecursiveRuleAnalyzer(prevRuleAST, tool, ruleName, language);
 		boolean isLeftRec;
@@ -117,7 +122,7 @@ public class LeftRecursiveRuleTransformer {
 //		System.out.println("created: "+newRuleText);
 		// now parse within the context of the grammar that originally created
 		// the AST we are transforming. This could be an imported grammar so
-		// we cannot just reference this.g because the role might come from
+		// we cannot just reference this.g because the rule might come from
 		// the imported grammar and not the root grammar (this.g)
 		RuleAST t = parseArtificialRule(prevRuleAST.g, newRuleText);
 
