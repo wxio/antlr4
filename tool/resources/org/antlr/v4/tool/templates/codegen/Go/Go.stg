@@ -105,7 +105,7 @@ package <file.genPackage> // <file.grammarName>
 package parser // <file.grammarName>
 <endif>
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import _ "github.com/antlr/antlr4/runtime/Go/antlr"
 <if(header)>
 
 <header>
@@ -113,16 +113,7 @@ import "github.com/antlr/antlr4/runtime/Go/antlr"
 
 // A complete Visitor for a parse tree produced by <file.parserName>.
 type <file.grammarName>Visitor interface {
-	antlr.ParseTreeVisitor
-
-	// Provide the default result that will be returned from GetChildren (default: nil)
-	DefaultResult() interface{}
-
-	// Decide if we should continue visiting the rule nodes, based on the result so far.
-	ShouldVisitNextChild(node antlr.RuleNode, resultSoFar interface{}) bool
-
-	// Given the results found in the children so far, and the new result, determine the new result value.
-	AggregateResult(resultSoFar interface{}, childResult interface{}) interface{}
+    VisitorResult
 
 <file.visitorNames:{lname |
 	// Visit a parse tree produced by <file.parserName>#<lname>.
@@ -142,67 +133,57 @@ package parser // <file.grammarName>
 
 import "github.com/antlr/antlr4/runtime/Go/antlr"
 
+type VisitorResult interface {
+    antlr.ParseTreeVisitor
+    Init() interface{}
+    VisitNext(node antlr.RuleNode, resultSoFar interface{}) bool
+    Aggregate(resultSoFar, childResult interface{}) interface{}
+}
+
 type Base<file.grammarName>Visitor struct {
-	*antlr.BaseParseTreeVisitor
-	super <file.grammarName>Visitor
+    *antlr.BaseParseTreeVisitor
+    delegate VisitorResult
 }
 
-func (v *Base<file.grammarName>Visitor) SetSuper(newSuper <file.grammarName>Visitor) {
-	v.super = newSuper
+func (v *Base<file.grammarName>Visitor) SetDelegate(delegate VisitorResult) {
+    v.delegate = delegate
 }
 
-func (v *Base<file.grammarName>Visitor) DefaultResult() interface{} {
-	return nil
+func (v *Base<file.grammarName>Visitor) Init() interface{} {
+    return nil
 }
 
-func (v *Base<file.grammarName>Visitor) ShouldVisitNextChild(node antlr.RuleNode, resultSoFar interface{}) bool {
-	return true
+func (v *Base<file.grammarName>Visitor) VisitNext(node antlr.RuleNode, resultSoFar interface{}) bool {
+    return true
 }
 
-func (v *Base<file.grammarName>Visitor) AggregateResult(resultSoFar, childResult interface{}) interface{} {
-	return childResult
+func (v *Base<file.grammarName>Visitor) Aggregate(resultSoFar, childResult interface{}) interface{} {
+    return childResult
 }
 
 func (v *Base<file.grammarName>Visitor) VisitChildren(node antlr.RuleNode) interface{} {
-	var result interface{} = nil
-
-	if v.super != nil {
-		result = v.super.DefaultResult()
-	}
-
-	for i := 0; i \< node.GetChildCount(); i++ {
-		if v.super != nil {
-			doNextChild := v.super.ShouldVisitNextChild(node, result)
-			if(!doNextChild) { break }
-		}
-
-		child := node.GetChild(i)
-		ruleChild, ok := child.(antlr.RuleNode)
-		if !ok {
-			terminalChild, ok := child.(antlr.TerminalNode)
-			if ok {
-				childResult := v.VisitTerminal(terminalChild)
-				if v.super != nil {
-					result = v.super.AggregateResult(result, childResult)
-				} else {
-					result = childResult
-				}
-			} else {
-				errChild, ok := child.(antlr.ErrorNode)
-				if ok {
-					v.VisitErrorNode(errChild)
-				}
-			}
-		} else {
-			if v.super != nil {
-			        childResult := ruleChild.Accept(v.super)
-			        result = v.super.AggregateResult(result, childResult)
-			} else {
-			        result = ruleChild.Accept(v)
-			}
-		}
-	}
-	return result
+    if v.delegate == nil {
+        panic("delegate much be set")
+    }
+    result := v.delegate.Init()
+    for _, child := range node.GetChildren() {
+        if !v.delegate.VisitNext(node, result) {
+            break
+        }
+        switch child := child.(type) {
+        case antlr.TerminalNode:
+            childResult := v.VisitTerminal(child)
+            result = v.delegate.Aggregate(result, childResult)
+        case antlr.ErrorNode:
+            v.VisitErrorNode(child)
+        case antlr.RuleNode:
+            childResult := child.Accept(v.delegate)
+            result = v.delegate.Aggregate(result, childResult)
+        default:
+            // can this happen??
+        }
+    }
+    return result
 }
 
 <file.visitorNames:{lname |
